@@ -8,8 +8,15 @@ import colorsys
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# get cluster centers for grouped skin tone values
+# get rgb values of each morphe label image
+# get the 4 representative images from each cluster that are closest to the centers
+# get difference between representative images and the morphe label images
+    # get 5 closest morphe label images to each representative image
+# test representative images on the morphe algorithm and see which of their images they match to
+# get difference in skintones between the labels we calculated and the labels from the morphe algo
+
 def extract_skin(image):
-    """Extract skin region using HSV color segmentation"""
     hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     lower_skin = np.array([0, 40, 50], dtype=np.uint8)
     upper_skin = np.array([25, 255, 255], dtype=np.uint8)
@@ -18,31 +25,26 @@ def extract_skin(image):
     return skin
 
 def get_dominant_color(image, k=1):
-    """Find the dominant color in the image using K-means"""
     pixels = image.reshape(-1, 3)
-    pixels = pixels[pixels.sum(axis=1) > 0]  # Remove black (masked) pixels
+    pixels = pixels[pixels.sum(axis=1) > 0]
     if len(pixels) == 0:
-        return np.array([0, 0, 0])  # Fallback for empty masks
-    
+        return np.array([0, 0, 0])
     kmeans = KMeans(n_clusters=k, n_init=10)
     kmeans.fit(pixels)
     return kmeans.cluster_centers_[0]
 
 def get_image_paths(root_dir):
-    """Retrieve image paths from nested subdirectories"""
     image_paths = []
     for person_folder in os.listdir(root_dir):
         person_path = os.path.join(root_dir, person_folder)
-        if os.path.isdir(person_path):  # Ensure it's a directory
+        if os.path.isdir(person_path):
             for img_file in os.listdir(person_path):
                 img_path = os.path.join(person_path, img_file)
                 if img_file.lower().endswith(('.jpg', '.jpeg', '.png')):
                     image_paths.append(img_path)
-    image_paths = random.sample(image_paths, 10)  # Randomly sample 1000 images
     return image_paths
 
 def process_images(image_paths):
-    """Process images to extract dominant skin tone"""
     skin_tones = []
     for path in image_paths:
         img = cv2.imread(path)
@@ -53,14 +55,9 @@ def process_images(image_paths):
     return np.array(skin_tones)
 
 def cluster_images(skin_tones, image_paths, n_clusters=10):
-    """Cluster images based on skin tones"""
     kmeans = KMeans(n_clusters=n_clusters, n_init=10)
     labels = kmeans.fit_predict(skin_tones)
-
-    # Get cluster centers (average skin tone)
     cluster_centers = kmeans.cluster_centers_
-
-    # Find 3-4 representative images for each cluster
     representative_images = {}
     for i in range(n_clusters):
         cluster_indices = np.where(labels == i)[0]
@@ -68,32 +65,17 @@ def cluster_images(skin_tones, image_paths, n_clusters=10):
         distances = np.linalg.norm(cluster_skin_tones - cluster_centers[i], axis=1)
         closest_indices = cluster_indices[np.argsort(distances)[:4]]
         representative_images[i] = [image_paths[idx] for idx in closest_indices]
-
     return labels, cluster_centers, representative_images
 
-# Set the correct image directory
 image_dir = 'data/lfw-deepfunneled/'
-
-# Retrieve image paths
 image_paths = get_image_paths(image_dir)
-
-# Extract skin tones
 skin_tones = process_images(image_paths)
-
-# Cluster images and find representatives
 labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
 
 print("Cluster Centers (Avg Skin Tones):", avg_skin_tones)
 print("Representative Images:", representatives)
-
-# plot the clusters
  
 def plot_clusters(df):
-    # we have a df with R, G, B and cluster
-    # 10 rows
-    # we want to plot the average skin tone for each cluster and color the points as the skin tones they represent
-    # 3d scatterplot with R, G, B as the axes
-    # normalize the values to 0-1
     df.loc[:, 'Cluster'] = df.index
     df.loc[:, 'R'] = df.loc[:, 'R'] / 255
     df.loc[:, 'G'] = df.loc[:, 'G'] / 255
@@ -113,6 +95,5 @@ def plot_clusters(df):
     ax.set_title('Skin Tone Clusters')
     plt.savefig('skin_tone_clusters.png')
     plt.show()
-
 
 plot_clusters(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']))
