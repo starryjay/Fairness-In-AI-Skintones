@@ -48,7 +48,6 @@ def preprocess_lfw(lfw_csv):
         img = tf.io.read_file(img)
         #decode image
         img = tf.image.decode_jpeg(img, channels=3)
-        #resize image to 224x224
         img = tf.image.resize(img, [128, 128])
         #normalize image
         img = img / 255.0
