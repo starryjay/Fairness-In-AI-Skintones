@@ -93,12 +93,14 @@ def process_img_for_clustering(df, representatives):
     skintone_df = pd.DataFrame.from_dict(skin_tones, orient='index')
     # split each column into img path, r, g, b
     skintone_df = skintone_df.stack().reset_index()
+    print('skintone df before renaming columns\n', skintone_df.head())
     skintone_df.columns = ['Cluster', 'Representative', 'RGB']
     # scale cluster from 1-10
-    skintone_df['Cluster'] = skintone_df['Cluster'].astype(int) + 1
+    skintone_df['Cluster'] = skintone_df['Cluster'].astype(int)
     print(skintone_df['Cluster'].unique())
     skintone_df[['Image Path', 'RGB']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
     skintone_df[['R', 'G', 'B']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
+    print('skintone df after renaming columns\n', skintone_df.head())
     skintone_df = skintone_df.drop(columns=['RGB'])
     skintone_df.loc[:, 'R'] = skintone_df.loc[:, 'R'].astype(int) / 255
     skintone_df.loc[:, 'G'] = skintone_df.loc[:, 'G'].astype(int) / 255
@@ -109,7 +111,7 @@ def process_img_for_clustering(df, representatives):
     df.loc[:, 'G'] = df.loc[:, 'G'] / 255
     df.loc[:, 'B'] = df.loc[:, 'B'] / 255
     df.loc[:, 'RGB_tuple'] = df.loc[:, ['R', 'G', 'B']].apply(tuple, axis=1)
-    df = pd.merge(df, skintone_df, on='Cluster', how='left').rename(columns={'R_x': 'Cluster_R', 'G_x': 'Cluster_G', 'B_x': 'Cluster_B', 
+    df = pd.merge(df, skintone_df, on='Cluster', how='outer').rename(columns={'R_x': 'Cluster_R', 'G_x': 'Cluster_G', 'B_x': 'Cluster_B', 
                                                                              'R_y': 'Representative_R', 'G_y': 'Representative_G', 'B_y': 'Representative_B', 
                                                                              'RGB_tuple_x': 'Cluster_RGB_tuple', 'RGB_tuple_y': 'Representative_RGB_tuple'})
     return df
@@ -130,7 +132,7 @@ def plot_clusters(df):
                    marker=cluster_marker_map[cluster], 
                    edgecolors='black',
                    linewidth=0.8,
-                   label=f'Cluster {cluster}')
+                   label=f'Cluster {cluster + 1}')
     for cluster in unique_clusters:
         rep_data = df[df['Cluster'] == cluster]
         ax.scatter(rep_data['Representative_R'], rep_data['Representative_G'], rep_data['Representative_B'], 
@@ -139,7 +141,7 @@ def plot_clusters(df):
                    marker=cluster_marker_map[cluster]
                    )
     for i, row in df.iterrows():
-        ax.text(row['Cluster_R'], row['Cluster_G'], row['Cluster_B'], str(row['Cluster']), size=15, zorder=100)
+        ax.text(row['Cluster_R'], row['Cluster_G'], row['Cluster_B'], str(row['Cluster'] + 1), size=15, zorder=100)
     ax.set_xlabel('R')
     ax.set_ylabel('G')
     ax.set_zlabel('B')
@@ -148,5 +150,13 @@ def plot_clusters(df):
     plt.savefig('skin_tone_clusters.png')
     plt.show()
 
+def save_representatives(clustering_df):
+    # clustering df structure
+    print(clustering_df.head())
+    print(clustering_df.columns)
+    rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B']]
+    rep_csv.to_csv('representative_images.csv', index=False, header=True)
+    
 clustering_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
+save_representatives(clustering_df)
 plot_clusters(clustering_df)
