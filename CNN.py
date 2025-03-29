@@ -135,14 +135,20 @@ def plot_clusters(df):
                    marker=cluster_marker_map[cluster]
                    )
     for i, row in df.iterrows():
-        ax.text(row['Cluster_R'], row['Cluster_G'], row['Cluster_B'], str(row['Cluster'] + 1), size=15, zorder=100)
+        ax.text(row['Cluster_R'], row['Cluster_G'], row['Cluster_B'], str(row['Cluster'] + 1), size=20, zorder=100)
     ax.set_xlabel('R')
     ax.set_ylabel('G')
     ax.set_zlabel('B')
+    ax.set_xticklabels((np.arange(120, 251, 20)), fontsize=15)
+    ax.set_yticklabels((np.arange(60, 241, 20)), fontsize=15)
+    ax.set_zticklabels((np.arange(40, 221, 20)), fontsize=15)
     ax.set_title('Skin Tone Clusters', fontsize=30)
     ax.legend(fontsize=20, loc='upper left')
     plt.savefig('skin_tone_clusters.png')
     plt.show()
+
+    # change to monk skin tone scale instead
+    # 2d plot
 
 def save_representatives(clustering_df):
     # clustering df structure
