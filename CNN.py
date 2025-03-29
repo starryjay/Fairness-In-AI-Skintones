@@ -13,32 +13,35 @@ import matplotlib.pyplot as plt
 # test representative images on the morphe algorithm and see which of their images they match to
 # get difference in skintones between the labels we calculated and the labels from the morphe algo
 
-def extract_skin(image):
-    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    lower_skin = np.array([0, 40, 50], dtype=np.uint8)
-    upper_skin = np.array([25, 255, 255], dtype=np.uint8)
-    mask = cv2.inRange(hsv, lower_skin, upper_skin)
-    skin = cv2.bitwise_and(image, image, mask=mask)
-    return skin
+# def extract_skin(image, count=0):
+#     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+#     lower_skin = np.array([5, 10, 15], dtype=np.uint8)
+#     upper_skin = np.array([20, , 255], dtype=np.uint8)
+#     mask = cv2.inRange(hsv, lower_skin, upper_skin)
+#     skin = cv2.bitwise_and(image, image, mask=mask)
+#     # lower_skin = np.array([25, 20, 20], dtype=np.uint8)
+#     # upper_skin = np.array([255, 255, 220], dtype=np.uint8)
+#     # mask = cv2.inRange(image, lower_skin, upper_skin)
+#     # skin = cv2.bitwise_and(image, image, mask=mask)
+#     os.makedirs('skin_imgs', exist_ok=True)
+#     cv2.imwrite(f'skin_imgs/skin{count}.png', cv2.cvtColor(skin, cv2.COLOR_RGB2BGR))
+#     return skin
 
-def get_dominant_color(image, k=1):
-    pixels = image.reshape(-1, 3)
-    pixels = pixels[pixels.sum(axis=1) > 0]
-    if len(pixels) == 0:
-        return np.array([0, 0, 0])
-    kmeans = KMeans(n_clusters=k, n_init=10)
-    kmeans.fit(pixels)
-    return kmeans.cluster_centers_[0]
+def extract_skin(image, count=0):
+    height, width, _ = image.shape
+    center_x, center_y = width // 2, height // 2
+    # get pixel value of center pixel
+    center_pixel = image[center_y, center_x]
+    return center_pixel
 
 def get_image_paths(root_dir):
     image_paths = []
     for person_folder in os.listdir(root_dir):
         person_path = os.path.join(root_dir, person_folder)
         if os.path.isdir(person_path):
-            for img_file in os.listdir(person_path):
-                img_path = os.path.join(person_path, img_file)
-                if img_file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                    image_paths.append(img_path)
+            img_path = os.path.join(person_path, np.random.choice(os.listdir(person_path)))
+            if img_path.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_paths.append(img_path)
     print('got image paths')
     return image_paths
 
@@ -48,15 +51,14 @@ def process_images(image_paths):
         skin_tones = skin_tones_df.set_index('Image Path').T.to_dict()
     else:
         skin_tones = {}
+        count = 0
         for path in image_paths:
             img = cv2.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            skin = extract_skin(img)
-            dominant_color = get_dominant_color(skin)
-            if dominant_color is None or np.sum(dominant_color) == 0:
-                continue
-            else:
-                skin_tones[path] = dominant_color
+            img = cv2.resize(img, (128, 128))
+            skin = extract_skin(img, count)
+            skin_tones[path] = {'R': float(skin[0]), 'G': float(skin[1]), 'B': float(skin[2])}
+            count += 1
         skin_tones_df = pd.DataFrame.from_dict(skin_tones, orient='index', columns=['R', 'G', 'B'])
         skin_tones_df.to_csv('skin_tones.csv', index=True, header=True, index_label='Image Path')
     print('processed images')
@@ -80,27 +82,20 @@ def cluster_images(skin_tones, image_paths, n_clusters=10):
         representative_images[i] = [image_paths[idx] for idx in closest_indices]
     return labels, cluster_centers, representative_images
 
-image_dir = 'data/lfw-deepfunneled/'
-image_paths = get_image_paths(image_dir)
-skin_tones = process_images(image_paths)
-labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
-
 def process_img_for_clustering(df, representatives):
     print('plotting clusters')
     skin_tones = {}
+    all_paths = [img_path for img_list in representatives.values() for img_path in img_list]
+    all_skin_tones = process_images(all_paths)
     for cluster, img_list in representatives.items():
-        skin_tones[cluster] = [(img_path, process_images(img_list)[img_path]) for img_path in img_list]
+        skin_tones[cluster] = [(img_path, all_skin_tones[img_path]) for img_path in img_list if img_path in all_skin_tones]
     skintone_df = pd.DataFrame.from_dict(skin_tones, orient='index')
-    # split each column into img path, r, g, b
     skintone_df = skintone_df.stack().reset_index()
-    print('skintone df before renaming columns\n', skintone_df.head())
     skintone_df.columns = ['Cluster', 'Representative', 'RGB']
     # scale cluster from 1-10
     skintone_df['Cluster'] = skintone_df['Cluster'].astype(int)
-    print(skintone_df['Cluster'].unique())
     skintone_df[['Image Path', 'RGB']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
     skintone_df[['R', 'G', 'B']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
-    print('skintone df after renaming columns\n', skintone_df.head())
     skintone_df = skintone_df.drop(columns=['RGB'])
     skintone_df.loc[:, 'R'] = skintone_df.loc[:, 'R'].astype(int) / 255
     skintone_df.loc[:, 'G'] = skintone_df.loc[:, 'G'].astype(int) / 255
@@ -117,18 +112,17 @@ def process_img_for_clustering(df, representatives):
     return df
 
 def plot_clusters(df):
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(18, 18))
     ax = fig.add_subplot(111, projection='3d')
     markers = ['o', 's', 'd', '^', '8', 'P', 'X', 'p', '*', 'h']
     unique_clusters = df['Cluster'].unique()
     cluster_marker_map = {cluster: markers[i % len(markers)] for i, cluster in enumerate(unique_clusters)}
     cluster_color_map = df.loc[:, ['Cluster', 'Cluster_RGB_tuple']].set_index('Cluster').to_dict()['Cluster_RGB_tuple']
-    print(cluster_color_map)
     for cluster in unique_clusters:
         cluster_data = df[df['Cluster'] == cluster]
         ax.scatter(cluster_data['Cluster_R'], cluster_data['Cluster_G'], cluster_data['Cluster_B'], 
                    c=[cluster_color_map[cluster]], 
-                   s=320, 
+                   s=500, 
                    marker=cluster_marker_map[cluster], 
                    edgecolors='black',
                    linewidth=0.8,
@@ -137,7 +131,7 @@ def plot_clusters(df):
         rep_data = df[df['Cluster'] == cluster]
         ax.scatter(rep_data['Representative_R'], rep_data['Representative_G'], rep_data['Representative_B'], 
                    c=[cluster_color_map[cluster]], 
-                   s=200,
+                   s=350,
                    marker=cluster_marker_map[cluster]
                    )
     for i, row in df.iterrows():
@@ -145,18 +139,27 @@ def plot_clusters(df):
     ax.set_xlabel('R')
     ax.set_ylabel('G')
     ax.set_zlabel('B')
-    ax.set_title('Skin Tone Clusters')
-    ax.legend(fontsize=15)
+    ax.set_title('Skin Tone Clusters', fontsize=30)
+    ax.legend(fontsize=20, loc='upper left')
     plt.savefig('skin_tone_clusters.png')
     plt.show()
 
 def save_representatives(clustering_df):
     # clustering df structure
-    print(clustering_df.head())
-    print(clustering_df.columns)
-    rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B']]
+    clustering_df.loc[:, 'Representative_R'] = clustering_df.loc[:, 'Representative_R'] * 255
+    clustering_df.loc[:, 'Representative_G'] = clustering_df.loc[:, 'Representative_G'] * 255
+    clustering_df.loc[:, 'Representative_B'] = clustering_df.loc[:, 'Representative_B'] * 255
+    clustering_df.loc[:, 'Cluster_R'] = clustering_df.loc[:, 'Cluster_R'] * 255
+    clustering_df.loc[:, 'Cluster_G'] = clustering_df.loc[:, 'Cluster_G'] * 255
+    clustering_df.loc[:, 'Cluster_B'] = clustering_df.loc[:, 'Cluster_B'] * 255
+    rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
     rep_csv.to_csv('representative_images.csv', index=False, header=True)
     
+
+image_dir = 'data/lfw-deepfunneled/'
+image_paths = get_image_paths(image_dir)
+skin_tones = process_images(image_paths)
+labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
 clustering_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
 save_representatives(clustering_df)
 plot_clusters(clustering_df)
