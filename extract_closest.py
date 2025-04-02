@@ -2,6 +2,10 @@ import pandas as pd
 import os
 
 def extract_closest_images(paths):
+    # if the directory exists, delete it and its contents
+    if os.path.exists('closest_images'):
+        print("Deleting closest_images directory")
+        os.system('rm -rf closest_images')
     os.makedirs('closest_images', exist_ok=True)
     for index, img in paths.iterrows():
         img = img.iloc[0]
