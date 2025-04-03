@@ -55,7 +55,8 @@ def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
     print('processed images')
     return skin_tones
 
-def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[str], n_clusters: int=10) -> tuple[np.ndarray, np.ndarray, dict[int, list[str]]]:
+def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[str], 
+                   n_clusters: int=10) -> tuple[np.ndarray, np.ndarray, dict[int, list[str]]]:
     """
     Cluster images based on skin tones using KMeans clustering.
     Returns:
@@ -135,8 +136,9 @@ def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list
     df.loc[:, 'B'] = df.loc[:, 'B'] / 255
     df.loc[:, 'RGB_tuple'] = df.loc[:, ['R', 'G', 'B']].apply(tuple, axis=1)
     df = pd.merge(df, skintone_df, on='Cluster', how='outer').rename(columns={'R_x': 'Cluster_R', 'G_x': 'Cluster_G', 'B_x': 'Cluster_B', 
-                                                                             'R_y': 'Representative_R', 'G_y': 'Representative_G', 'B_y': 'Representative_B', 
-                                                                             'RGB_tuple_x': 'Cluster_RGB_tuple', 'RGB_tuple_y': 'Representative_RGB_tuple'})
+                                                                             'R_y': 'Representative_R', 'G_y': 'Representative_G', 
+                                                                             'B_y': 'Representative_B', 'RGB_tuple_x': 'Cluster_RGB_tuple', 
+                                                                             'RGB_tuple_y': 'Representative_RGB_tuple'})
     print('processed images for clustering')
     return df, skintone_df
 
@@ -221,7 +223,8 @@ def save_representatives(clustering_df: pd.DataFrame) -> None:
     clustering_df.loc[:, 'Cluster_R'] = clustering_df.loc[:, 'Cluster_R'] * 255
     clustering_df.loc[:, 'Cluster_G'] = clustering_df.loc[:, 'Cluster_G'] * 255
     clustering_df.loc[:, 'Cluster_B'] = clustering_df.loc[:, 'Cluster_B'] * 255
-    rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
+    rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 
+                             'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
     if 'cropped_faces' in clustering_df['Image Path'].iloc[0]:
         rep_csv.to_csv('./intermediate_files/representative_images_fashion.csv', index=False, header=True)
     else:
@@ -249,7 +252,10 @@ def error_rate():
     1. Clustering gives us RGB values of representative image and 5 closest images (what K means thinks are the 5 closeest). 
     2. Morphe models (used in the AI tool) have an associated RGB  and also give 5 reccoemdnations 
     3. Pass the representative image into the 'I to'l'and e  what are the recceomendations (get 5 RGB)
-    4. Metric 1 Jaccard similairity - how much do the representative image recceomdnations deviate from the morphe reccoemndatins (ie what is the percentage of overlapping shades - jaccard similarity)R    5. Metric 2 Statistical Parity - did the Morphe AI tool predict disappropriantely towards certain skintone groups (ie. visualize all the AI outputs, was it mostly fair toned, dark toned, etc - for this we have to check KMeans its self is biased)    '''
+    4. Metric 1 Jaccard similairity - how much do the representative image recceomdnations deviate 
+    from the morphe reccoemndatins (ie what is the percentage of overlapping shades - jaccard similarity)R    
+    5. Metric 2 Statistical Parity - did the Morphe AI tool predict disappropriantely towards certain skintone groups 
+    (ie. visualize all the AI outputs, was it mostly fair toned, dark toned, etc - for this we have to check KMeans its self is biased)    '''
     pass
 
 def main() -> None:
