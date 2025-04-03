@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # get cluster centers for grouped skin tone values
 # get rgb values of each morphe label image
@@ -49,14 +50,6 @@ def get_image_paths(root_dir: str) -> list[str]:
     print('got image paths')
     return image_paths
 
-def brightness(rgb):
-            """
-            Calculates perceived brightness (luminance) of an RGB triplet.
-            Uses standard luminance formula (Rec. 709).
-            """
-            r, g, b = rgb
-            return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
 def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
     print('processing images')
     skin_tones = {}
@@ -90,11 +83,10 @@ def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[st
         cluster_skin_tones = tones[cluster_indices]
         print('cluster_skin_tones:\n', cluster_skin_tones)
         distances = np.linalg.norm(cluster_skin_tones - cluster_centers[i], axis=1)
-        closest_indices = cluster_indices[np.argsort(distances)]
+        closest_indices = cluster_indices[np.argsort(distances)[:4]]
         representative_images[i] = [image_paths[idx] for idx in closest_indices]
     print('clustered images')
     # plot size of each cluster, colored by cluster center rgb
-    plt.figure(figsize=(12, 6))
     ax = plt.subplot(111)
     _, _, patches = ax.hist(labels, bins=n_clusters, edgecolor='black', linewidth=1)
     for i in range(n_clusters):
@@ -107,9 +99,11 @@ def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[st
     plt.title('Cluster Sizes')
     plt.xticks(range(n_clusters))
     plt.grid(axis='y')
+    if 'cropped_faces' in image_paths[0]:
+        plt.savefig('cluster_sizes_fashion.png')
+    else:
+        plt.savefig('cluster_sizes_lfw.png')
     plt.show()
-    plt.savefig('cluster_sizes.png')
-    
     return (labels, cluster_centers, representative_images)
 
 def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list[str]]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -204,7 +198,10 @@ def plot_clusters(df: pd.DataFrame) -> None:
     ax.set_zticklabels((np.arange(40, 221, 20)), fontsize=15)
     ax.set_title('Skin Tone Clusters', fontsize=30)
     ax.legend(fontsize=20, loc='upper left')
-    plt.savefig('skin_tone_clusters.png')
+    if 'cropped_faces' in df['Image Path'].iloc[0]:
+        plt.savefig('skin_tone_clusters_fashion.png')
+    else:
+        plt.savefig('skin_tone_clusters_lfw.png')
     plt.show()
     print('plotted clusters')
 
@@ -221,7 +218,10 @@ def save_representatives(clustering_df: pd.DataFrame) -> None:
     clustering_df.loc[:, 'Cluster_G'] = clustering_df.loc[:, 'Cluster_G'] * 255
     clustering_df.loc[:, 'Cluster_B'] = clustering_df.loc[:, 'Cluster_B'] * 255
     rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
-    rep_csv.to_csv('representative_images.csv', index=False, header=True)
+    if 'cropped_faces' in clustering_df['Image Path'].iloc[0]:
+        rep_csv.to_csv('representative_images_fashion.csv', index=False, header=True)
+    else:
+        rep_csv.to_csv('representative_images_lfw.csv', index=False, header=True)
     print('saved representatives')
 
 def clustering_bias():
@@ -249,41 +249,38 @@ def error_rate():
     4. Metric 1 Jaccard similairity - how much do the representative image recceomdnations deviate from the morphe reccoemndatins (ie what is the percentage of overlapping shades - jaccard similarity)R    5. Metric 2 Statistical Parity - did the Morphe AI tool predict disappropriantely towards certain skintone groups (ie. visualize all the AI outputs, was it mostly fair toned, dark toned, etc - for this we have to check KMeans its self is biased)    '''
     pass
 
+def main():
+    image_dir = 'data/lfw-deepfunneled/'
+    #image_dir = 'cropped_faces'
+    if image_dir == 'data/lfw-deepfunneled/':
+        image_paths = get_image_paths(image_dir)
+    else:
+        image_paths = [os.path.join(image_dir, filename) for filename in os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+    skin_tones = process_images(image_paths)
 
-import matplotlib.pyplot as plt
+    labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
+    print('labels:\n', labels)
+    print('avg skin tones:\n', avg_skin_tones)
+    print_skintone_distributions(skin_tones, labels)
+    clustering_df, skintone_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
+    print(skintone_df.head())
 
+    for i, color in enumerate(['R', 'G', 'B']):
+        print('color:\n', color)
+        plt.subplot(1, 3, i+1)
+        sns.histplot(skintone_df[color], bins=30, color=color.lower())
+        plt.title(f"{color} Channel")
+        plt.xlabel("Intensity")
+        plt.ylabel("Count")
+    plt.tight_layout()
+    if image_dir == 'cropped_faces':
+        plt.savefig('rgb_distributions_fashion.png')
+    else:
+        plt.savefig('rgb_distributions_lfw.png')
+    plt.show()
 
-    
+    save_representatives(clustering_df)
+    plot_clusters(clustering_df)
 
-image_dir = 'data/lfw-deepfunneled/'
-image_paths = get_image_paths(image_dir)
-skin_tones = process_images(image_paths)
-
-
-labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
-print('labels:\n', labels)
-print('avg skin tones:\n', avg_skin_tones)
-print_skintone_distributions(skin_tones, labels)
-clustering_df, skintone_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
-print(skintone_df.head())
-
-import seaborn as sns
-
-#plot initial rgb distribution 
-
-plt.figure(figsize=(12, 4))
-for i, color in enumerate(['R', 'G', 'B']):
-    print('color:\n', color)
-    plt.subplot(1, 3, i+1)
-    sns.histplot(skintone_df[color], bins=30, color=color.lower())
-    plt.title(f"{color} Channel")
-    plt.xlabel("Intensity")
-    plt.ylabel("Count")
-plt.tight_layout()
-plt.show()
-
-save_representatives(clustering_df)
-plot_clusters(clustering_df)
-
-
-
+if __name__ == "__main__":
+    main()
