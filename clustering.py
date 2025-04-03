@@ -6,29 +6,12 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# get cluster centers for grouped skin tone values
-# get rgb values of each morphe label image
-# get the 4 representative images from each cluster that are closest to the centers
-# get difference between representative images and the morphe label images
-    # get 5 closest morphe label images to each representative image
-# test representative images on the morphe algorithm and see which of their images they match to
-# get difference in skintones between the labels we calculated and the labels from the morphe algo
-
-# def extract_skin(image, count=0):
-#     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-#     lower_skin = np.array([5, 10, 15], dtype=np.uint8)
-#     upper_skin = np.array([20, , 255], dtype=np.uint8)
-#     mask = cv2.inRange(hsv, lower_skin, upper_skin)
-#     skin = cv2.bitwise_and(image, image, mask=mask)
-#     # lower_skin = np.array([25, 20, 20], dtype=np.uint8)
-#     # upper_skin = np.array([255, 255, 220], dtype=np.uint8)
-#     # mask = cv2.inRange(image, lower_skin, upper_skin)
-#     # skin = cv2.bitwise_and(image, image, mask=mask)
-#     os.makedirs('skin_imgs', exist_ok=True)
-#     cv2.imwrite(f'skin_imgs/skin{count}.png', cv2.cvtColor(skin, cv2.COLOR_RGB2BGR))
-#     return skin
-
-def extract_skin(image: np.ndarray, count: int=0) -> tuple[int, int]:
+def extract_skin(image: np.ndarray) -> tuple[int, int]:
+    """
+    Extracts the skin tone from a 20px x 20px square in the center of the image.
+    Returns: 
+    - A tuple of the average RGB values of the skin tone.
+    """
     height, width, _ = image.shape
     center_x, center_y = width // 2, height // 2
     # get pixel value of area around center pixel
@@ -38,6 +21,11 @@ def extract_skin(image: np.ndarray, count: int=0) -> tuple[int, int]:
     return avg_rgb
 
 def get_image_paths(root_dir: str) -> list[str]:
+    """
+    Get a list of image paths from the specified directory.
+    Returns:
+    - A list of image paths.
+    """
     print('getting image paths')
     image_paths = []
     for person_folder in os.listdir(root_dir):
@@ -51,23 +39,28 @@ def get_image_paths(root_dir: str) -> list[str]:
     return image_paths
 
 def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
+    """
+    Process images to extract skin tones.
+    Returns:
+    - A nested dictionary with image paths as keys and RGB dicts as values.
+    """
     print('processing images')
     skin_tones = {}
-    count = 0
     for path in image_paths:
         img = cv2.imread(path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (128, 128))
-        skin = extract_skin(img, count)
+        skin = extract_skin(img)
         skin_tones[path] = {'R': float(skin[0]), 'G': float(skin[1]), 'B': float(skin[2])}
-        count += 1
-    print('skin_tones if csv doesn\'t exist:\n', list(skin_tones.items())[0])
-    skin_tones_df = pd.DataFrame.from_dict(skin_tones, orient='index', columns=['R', 'G', 'B'])
     print('processed images')
     return skin_tones
 
 def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[str], n_clusters: int=10) -> tuple[np.ndarray, np.ndarray, dict[int, list[str]]]:
-    # extract each dict from skin_tones, convert the three values to a tuple, add tuple to list
+    """
+    Cluster images based on skin tones using KMeans clustering.
+    Returns:
+    - A tuple containing the labels, cluster centers, representative images, and number of clusters.
+    """
     print('clustering images')
     tones = []
     for d in skin_tones.values():
@@ -76,19 +69,25 @@ def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[st
     kmeans = KMeans(n_clusters=n_clusters, n_init='auto')
     labels = kmeans.fit_predict(tones)
     cluster_centers = kmeans.cluster_centers_
-    print('cluster_centers:\n', cluster_centers)
     representative_images = {}
     for i in range(n_clusters):
         cluster_indices = np.where(labels == i)[0]
         cluster_skin_tones = tones[cluster_indices]
-        print('cluster_skin_tones:\n', cluster_skin_tones)
         distances = np.linalg.norm(cluster_skin_tones - cluster_centers[i], axis=1)
         closest_indices = cluster_indices[np.argsort(distances)[:4]]
         representative_images[i] = [image_paths[idx] for idx in closest_indices]
     print('clustered images')
+    return (labels, cluster_centers, representative_images, n_clusters)
+
+def plot_cluster_sizes(labels: np.ndarray, cluster_centers: np.ndarray, image_paths: list[str], n_clusters: int=10) -> None:
+    """
+    Plot the sizes of each cluster and save the plot.
+    """
     # plot size of each cluster, colored by cluster center rgb
+    plt.figure(figsize=(10, 6), dpi=300)
     ax = plt.subplot(111)
     _, _, patches = ax.hist(labels, bins=n_clusters, edgecolor='black', linewidth=1)
+    plt.bar_label(patches)
     for i in range(n_clusters):
         color = cluster_centers[i] / 255
         patches[i].set_facecolor(color)
@@ -96,17 +95,22 @@ def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[st
         patches[i].set_linewidth(1)
     plt.xlabel('Cluster')
     plt.ylabel('Count')
-    plt.title('Cluster Sizes')
     plt.xticks(range(n_clusters))
     plt.grid(axis='y')
     if 'cropped_faces' in image_paths[0]:
-        plt.savefig('cluster_sizes_fashion.png')
+        plt.title('Cluster Sizes for Fashion Dataset')
+        plt.savefig('./plots/cluster_sizes_fashion.png')
     else:
-        plt.savefig('cluster_sizes_lfw.png')
+        plt.title('Cluster Sizes for LFW Dataset')
+        plt.savefig('./plots/cluster_sizes_lfw.png')
     plt.show()
-    return (labels, cluster_centers, representative_images)
 
 def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list[str]]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Process images for clustering by extracting skin tones and merging with the original dataframe.
+    Returns:
+    - A tuple containing the merged dataframe and a dataframe with skin tones.
+    """
     print('processing images for clustering')
     skin_tones = {}
     all_paths = [img_path for img_list in representatives.values() for img_path in img_list]
@@ -142,26 +146,16 @@ def print_skintone_distributions(skintone_df: pd.DataFrame, labels: np.ndarray) 
     
 
 def plot_clusters(df: pd.DataFrame) -> None:
-    # df.loc[:, 'Cluster_R'] = df.loc[:, 'Cluster_R'] * 255
-    # df.loc[:, 'Cluster_G'] = df.loc[:, 'Cluster_G'] * 255
-    # df.loc[:, 'Cluster_B'] = df.loc[:, 'Cluster_B'] * 255
-    # df.loc[:, 'Representative_R'] = df.loc[:, 'Representative_R'] * 255
-    # df.loc[:, 'Representative_G'] = df.loc[:, 'Representative_G'] * 255
-    # df.loc[:, 'Representative_B'] = df.loc[:, 'Representative_B'] * 255
-    # df.loc[:, 'Cluster_RGB_tuple'] = df.loc[:, ['Cluster_R', 'Cluster_G', 'Cluster_B']].apply(tuple, axis=1)
-    # df.loc[:, 'Representative_RGB_tuple'] = df.loc[:, ['Representative_R', 'Representative_G', 'Representative_B']].apply(tuple, axis=1)
+    """
+    Plot the clusters in 3D space with R, G, and B as axes and save the plot.
+    """
     print('plotting clusters')
-    fig = plt.figure(figsize=(18, 18))
+    fig = plt.figure(figsize=(18, 18), dpi=300)
     ax = fig.add_subplot(111, projection='3d')
     markers = ['o', 's', 'd', '^', '8', 'P', 'X', 'p', '*', 'h']
     unique_clusters = df['Cluster'].unique()
     cluster_marker_map = {cluster: markers[i % len(markers)] for i, cluster in enumerate(unique_clusters)}
     cluster_color_map = df.loc[:, ['Cluster', 'Cluster_RGB_tuple']].set_index('Cluster').to_dict()['Cluster_RGB_tuple']
-    # create color map for every representative image's rgb tuple
-    df.loc[:, 'Cluster:Representative'] = df['Cluster'].astype(str) + ':' + df['Representative'].astype(str)
-    unique_c_rep = df['Cluster:Representative'].unique()
-    rep_color_map = df.loc[:, ['Cluster:Representative', 'Representative_RGB_tuple']].set_index('Cluster:Representative').to_dict()['Representative_RGB_tuple']
-    print(list(rep_color_map.items())[:5])
     for cluster in unique_clusters:
         cluster_data = df[df['Cluster'] == cluster]
         ax.scatter(cluster_data['Cluster_R'], cluster_data['Cluster_G'], cluster_data['Cluster_B'], 
@@ -171,16 +165,6 @@ def plot_clusters(df: pd.DataFrame) -> None:
                    edgecolors='black',
                    linewidth=0.8,
                    label=f'Cluster {cluster + 1}')
-    # plot representative images with their unique colors from rep_color_map
-    # for pair in unique_c_rep:
-    #     # get the cluster number from the pair
-    #     cluster_num = int(pair.split(':')[0])
-    #     rep_data = df[df['Cluster:Representative'] == pair]
-    #     ax.scatter(rep_data['Representative_R'], rep_data['Representative_G'], rep_data['Representative_B'], 
-    #                c=[rep_color_map[pair]], 
-    #                s=350,
-    #                marker=cluster_marker_map[cluster_num],
-    #                )
     for cluster in unique_clusters:
         rep_data = df[df['Cluster'] == cluster]
         ax.scatter(rep_data['Representative_R'], rep_data['Representative_G'], rep_data['Representative_B'], 
@@ -196,19 +180,39 @@ def plot_clusters(df: pd.DataFrame) -> None:
     ax.set_xticklabels((np.arange(120, 251, 20)), fontsize=15)
     ax.set_yticklabels((np.arange(60, 241, 20)), fontsize=15)
     ax.set_zticklabels((np.arange(40, 221, 20)), fontsize=15)
-    ax.set_title('Skin Tone Clusters', fontsize=30)
     ax.legend(fontsize=20, loc='upper left')
     if 'cropped_faces' in df['Image Path'].iloc[0]:
-        plt.savefig('skin_tone_clusters_fashion.png')
+        ax.set_title('Skin Tone Clusters for Fashion Dataset', fontsize=30)
+        plt.savefig('./plots/skin_tone_clusters_fashion.png')
     else:
-        plt.savefig('skin_tone_clusters_lfw.png')
+        ax.set_title('Skin Tone Clusters for LFW Dataset', fontsize=30)
+        plt.savefig('./plots/skin_tone_clusters_lfw.png')
     plt.show()
     print('plotted clusters')
 
-    # change to monk skin tone scale instead
-    # 2d plot
+def plot_rgb_distributions(skintone_df: pd.DataFrame, image_dir: str) -> None:
+    """
+    Plot the R, G, and B distributions of the skin tones and save the plot.
+    """
+    plt.subplots(1, 3, figsize=(18, 6), sharey=True, dpi=300)
+    for i, color in enumerate(['R', 'G', 'B']):
+        print('color:\n', color)
+        plt.subplot(1, 3, i + 1)
+        sns.histplot(skintone_df[color], bins=30, color=color.lower())
+        plt.title(f"{color} Channel")
+        plt.xlabel("Intensity")
+        plt.ylabel("Count")
+    if image_dir == 'cropped_faces':
+        plt.suptitle('RGB Distributions for Fashion Dataset', fontsize=16)
+        plt.savefig('./plots/rgb_distributions_fashion.png')
+    else:
+        plt.suptitle('RGB Distributions for LFW Dataset', fontsize=16)
+        plt.savefig('./plots/rgb_distributions_lfw.png')
+    plt.show()
 
 def save_representatives(clustering_df: pd.DataFrame) -> None:
+    """
+    Save the representative images and their RGB values to a CSV file."""
     print('saving representatives')
     clustering_df = pd.DataFrame(clustering_df)
     clustering_df.loc[:, 'Representative_R'] = clustering_df.loc[:, 'Representative_R'] * 255
@@ -219,14 +223,13 @@ def save_representatives(clustering_df: pd.DataFrame) -> None:
     clustering_df.loc[:, 'Cluster_B'] = clustering_df.loc[:, 'Cluster_B'] * 255
     rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
     if 'cropped_faces' in clustering_df['Image Path'].iloc[0]:
-        rep_csv.to_csv('representative_images_fashion.csv', index=False, header=True)
+        rep_csv.to_csv('./intermediate_files/representative_images_fashion.csv', index=False, header=True)
     else:
-        rep_csv.to_csv('representative_images_lfw.csv', index=False, header=True)
+        rep_csv.to_csv('./intermediate_files/representative_images_lfw.csv', index=False, header=True)
     print('saved representatives')
 
 def clustering_bias():
-    '''
-    Are the cluster skeweed more towards fairer skintones?'''
+    '''Measures the bias in the clustering process by checking the distribution of skin tones in the clusters.'''
 
     # X = df[['R', 'G', 'B']].values
     # kmeans = KMeans(n_clusters=3, random_state=42).fit(X)
@@ -243,42 +246,27 @@ def clustering_bias():
 
 def error_rate():
     '''determine how often Morphe foundation shade reccomendations compare to model skin tone output
-    1. Clustering gives us RGB values of representative image and 4 closest images (what K means thinks are the 4 closeest). 
-    2. Morphe models (used in the AI tool) have an associated RGB  and also give 4 reccoemdnations 
-    3. Pass the representative image into the 'I to'l'and e  what are the recceomendations (get 4  RGB)
+    1. Clustering gives us RGB values of representative image and 5 closest images (what K means thinks are the 5 closeest). 
+    2. Morphe models (used in the AI tool) have an associated RGB  and also give 5 reccoemdnations 
+    3. Pass the representative image into the 'I to'l'and e  what are the recceomendations (get 5 RGB)
     4. Metric 1 Jaccard similairity - how much do the representative image recceomdnations deviate from the morphe reccoemndatins (ie what is the percentage of overlapping shades - jaccard similarity)R    5. Metric 2 Statistical Parity - did the Morphe AI tool predict disappropriantely towards certain skintone groups (ie. visualize all the AI outputs, was it mostly fair toned, dark toned, etc - for this we have to check KMeans its self is biased)    '''
     pass
 
-def main():
-    image_dir = 'data/lfw-deepfunneled/'
-    #image_dir = 'cropped_faces'
+def main() -> None:
+    """
+    Main function to run the clustering and visualization process."""
+    #image_dir = 'data/lfw-deepfunneled/'
+    image_dir = 'cropped_faces'
     if image_dir == 'data/lfw-deepfunneled/':
         image_paths = get_image_paths(image_dir)
     else:
-        image_paths = [os.path.join(image_dir, filename) for filename in os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+        image_paths = [os.path.join(image_dir, filename) for filename in \
+                       os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
     skin_tones = process_images(image_paths)
-
-    labels, avg_skin_tones, representatives = cluster_images(skin_tones, image_paths, n_clusters=10)
-    print('labels:\n', labels)
-    print('avg skin tones:\n', avg_skin_tones)
-    print_skintone_distributions(skin_tones, labels)
+    labels, avg_skin_tones, representatives, n_clusters = cluster_images(skin_tones, image_paths, n_clusters=10)
+    plot_cluster_sizes(labels, avg_skin_tones, image_paths, n_clusters)
     clustering_df, skintone_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
-    print(skintone_df.head())
-
-    for i, color in enumerate(['R', 'G', 'B']):
-        print('color:\n', color)
-        plt.subplot(1, 3, i+1)
-        sns.histplot(skintone_df[color], bins=30, color=color.lower())
-        plt.title(f"{color} Channel")
-        plt.xlabel("Intensity")
-        plt.ylabel("Count")
-    plt.tight_layout()
-    if image_dir == 'cropped_faces':
-        plt.savefig('rgb_distributions_fashion.png')
-    else:
-        plt.savefig('rgb_distributions_lfw.png')
-    plt.show()
-
+    plot_rgb_distributions(skintone_df, image_dir)
     save_representatives(clustering_df)
     plot_clusters(clustering_df)
 
