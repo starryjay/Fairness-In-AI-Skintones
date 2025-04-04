@@ -39,14 +39,16 @@ def get_closest_images(representative_data: pd.DataFrame, morphe_data: pd.DataFr
         out.loc[len(out)] = row
     return out, min_distances
 
-def write_csv(representative_data: pd.DataFrame, out: pd.DataFrame) -> None:
+def write_csv(rep_path, out: pd.DataFrame) -> None:
     """
     Writes the closest images and their distances to a CSV file.
     """
-    if 'cropped_faces' in representative_data.iloc[0, 0]:
+    if 'fashion' in rep_path:
         out.to_csv('./intermediate_files/closest_images_fashion.csv', index=False)
-    else:
+    elif 'lfw' in rep_path:
         out.to_csv('./intermediate_files/closest_images_lfw.csv', index=False)
+    else:
+        out.to_csv('./intermediate_files/closest_images_overall.csv', index=False)
 
 def plot_distances(min_distances: dict, rep_path: str) -> None:
     """
@@ -61,20 +63,24 @@ def plot_distances(min_distances: dict, rep_path: str) -> None:
     if 'fashion' in rep_path:
         plt.title('Distribution of Summed RGB Distances from Nearest Morphe Swatches - Fashion Dataset')
         plt.savefig('./plots/distance_distribution_fashion.png', dpi=300)
-    else:
+    elif 'lfw' in rep_path:
         plt.title('Distribution of Summed RGB Distances from Nearest Morphe Swatches - LFW Dataset')
         plt.savefig('./plots/distance_distribution_lfw.png', dpi=300)
+    else:
+        plt.title('Distribution of Summed RGB Distances from Nearest Morphe Swatches - Overall Dataset')
+        plt.savefig('./plots/distance_distribution_overall.png', dpi=300)
     plt.show()
 
 def main() -> None:
     """
     Main function to read the representative images and Morphe swatches, find the closest images, and plot the distances."""
-    rep_path = './intermediate_files/representative_images_fashion.csv'
+    #rep_path = './intermediate_files/representative_images_fashion.csv'
     #rep_path = './intermediate_files/representative_images_lfw.csv'
+    rep_path = './intermediate_files/representative_images_overall.csv'
     morphe_data = pd.read_csv('./intermediate_files/morphe_swatch.csv')
     representative_data = pd.read_csv(rep_path)
     closest, min_distances = get_closest_images(representative_data, morphe_data, n=5)
-    write_csv(representative_data, closest)
+    write_csv(rep_path, closest)
     plot_distances(min_distances, rep_path)
 
 if __name__ == "__main__":

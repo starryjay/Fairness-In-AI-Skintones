@@ -24,7 +24,8 @@ def main() -> None:
     Main function to read image paths and extract closest images.
     """
     #append = '_fashion'
-    append = '_lfw'
+    #append = '_lfw'
+    append = '_overall'
     img_paths = pd.read_csv('./intermediate_files/closest_images' + append + '.csv').loc[:, ['Image Path']]
     extract_closest_images(img_paths, append)
 

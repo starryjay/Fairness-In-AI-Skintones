@@ -18,8 +18,8 @@ def extract_skin(image: np.ndarray) -> tuple[int, int]:
     center_pixel = image[center_y-10:center_y+10, center_x-10:center_x+10]
     # calculate average RGB values
     avg_rgb = np.mean(center_pixel, axis=(0, 1))
-    cv2.rectangle(image, (center_x - 10, center_y - 10), (center_x + 10, center_y + 10), (0, 255, 0), 2)
-    cv2.drawMarker(image, (center_x, center_y), (0, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=5, thickness=1)
+    # cv2.rectangle(image, (center_x - 10, center_y - 10), (center_x + 10, center_y + 10), (0, 255, 0), 2)
+    # cv2.drawMarker(image, (center_x, center_y), (0, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=5, thickness=1)
     return avg_rgb
 
 def get_image_paths(root_dir: str) -> list[str]:
@@ -54,12 +54,12 @@ def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
         img = cv2.resize(img, (128, 128))
         skin = extract_skin(img)
         skin_tones[path] = {'R': float(skin[0]), 'G': float(skin[1]), 'B': float(skin[2])}
-        # write 5 images to disk with skin tone box
-        if path in image_paths[:5] and len(image_paths) > 40:
-            img = cv2.resize(img, (256, 256))
-            os.makedirs('./processed_images', exist_ok=True)
-            print('writing image to disk')
-            cv2.imwrite(os.path.join('./processed_images', os.path.basename(path)), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        # # write 5 images to disk with skin tone box
+        # if path in image_paths[:5] and len(image_paths) > 40:
+        #     img = cv2.resize(img, (256, 256))
+        #     os.makedirs('./processed_images', exist_ok=True)
+        #     print('writing image to disk')
+        #     cv2.imwrite(os.path.join('./processed_images', os.path.basename(path)), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     print('processed images')
     return skin_tones
 
@@ -88,7 +88,7 @@ def cluster_images(skin_tones: dict[str, dict[str, float]], image_paths: list[st
     print('clustered images')
     return (labels, cluster_centers, representative_images, n_clusters)
 
-def plot_cluster_sizes(labels: np.ndarray, cluster_centers: np.ndarray, image_paths: list[str], n_clusters: int=10) -> None:
+def plot_cluster_sizes(image_dir: str, labels: np.ndarray, cluster_centers: np.ndarray, image_paths: list[str], n_clusters: int=10) -> None:
     """
     Plot the sizes of each cluster and save the plot.
     """
@@ -106,12 +106,15 @@ def plot_cluster_sizes(labels: np.ndarray, cluster_centers: np.ndarray, image_pa
     plt.ylabel('Count')
     plt.xticks(range(n_clusters))
     plt.grid(axis='y')
-    if 'cropped_faces' in image_paths[0]:
+    if image_dir == 'cropped_faces':
         plt.title('Cluster Sizes for Fashion Dataset')
         plt.savefig('./plots/cluster_sizes_fashion.png')
-    else:
+    elif image_dir == 'data/lfw-deepfunneled/':
         plt.title('Cluster Sizes for LFW Dataset')
         plt.savefig('./plots/cluster_sizes_lfw.png')
+    else:
+        plt.title('Cluster Sizes for Combined Dataset')
+        plt.savefig('./plots/cluster_sizes_overall.png')
     plt.show()
 
 def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list[str]]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -155,7 +158,7 @@ def print_skintone_distributions(skintone_df: pd.DataFrame, labels: np.ndarray) 
     #cluster_dist = pd.crosstab(index=)
     
 
-def plot_clusters(df: pd.DataFrame) -> None:
+def plot_clusters(df: pd.DataFrame, image_dir: str) -> None:
     """
     Plot the clusters in 3D space with R, G, and B as axes and save the plot.
     """
@@ -191,12 +194,15 @@ def plot_clusters(df: pd.DataFrame) -> None:
     ax.set_yticklabels((np.arange(60, 241, 20)), fontsize=15)
     ax.set_zticklabels((np.arange(40, 221, 20)), fontsize=15)
     ax.legend(fontsize=20, loc='upper left')
-    if 'cropped_faces' in df['Image Path'].iloc[0]:
+    if image_dir == 'cropped_faces':
         ax.set_title('Skin Tone Clusters for Fashion Dataset', fontsize=30)
         plt.savefig('./plots/skin_tone_clusters_fashion.png')
-    else:
+    elif image_dir == 'data/lfw-deepfunneled/':
         ax.set_title('Skin Tone Clusters for LFW Dataset', fontsize=30)
         plt.savefig('./plots/skin_tone_clusters_lfw.png')
+    else:
+        ax.set_title('Skin Tone Clusters for Combined Dataset', fontsize=30)
+        plt.savefig('./plots/skin_tone_clusters_overall.png')
     plt.show()
     print('plotted clusters')
 
@@ -215,12 +221,15 @@ def plot_rgb_distributions(skintone_df: pd.DataFrame, image_dir: str) -> None:
     if image_dir == 'cropped_faces':
         plt.suptitle('RGB Distributions for Fashion Dataset', fontsize=16)
         plt.savefig('./plots/rgb_distributions_fashion.png')
-    else:
+    elif image_dir == 'data/lfw-deepfunneled/':
         plt.suptitle('RGB Distributions for LFW Dataset', fontsize=16)
         plt.savefig('./plots/rgb_distributions_lfw.png')
+    else:
+        plt.suptitle('RGB Distributions for Combined Dataset', fontsize=16)
+        plt.savefig('./plots/rgb_distributions_overall.png')
     plt.show()
 
-def save_representatives(clustering_df: pd.DataFrame) -> None:
+def save_representatives(clustering_df: pd.DataFrame, image_dir: str) -> None:
     """
     Save the representative images and their RGB values to a CSV file."""
     print('saving representatives')
@@ -233,10 +242,12 @@ def save_representatives(clustering_df: pd.DataFrame) -> None:
     clustering_df.loc[:, 'Cluster_B'] = clustering_df.loc[:, 'Cluster_B'] * 255
     rep_csv = clustering_df[['Image Path', 'Cluster', 'Representative', 'Representative_R', 'Representative_G', 
                              'Representative_B', 'Cluster_R', 'Cluster_G', 'Cluster_B']]
-    if 'cropped_faces' in clustering_df['Image Path'].iloc[0]:
+    if image_dir == 'cropped_faces':
         rep_csv.to_csv('./intermediate_files/representative_images_fashion.csv', index=False, header=True)
-    else:
+    elif image_dir == 'data/lfw-deepfunneled/':
         rep_csv.to_csv('./intermediate_files/representative_images_lfw.csv', index=False, header=True)
+    else:
+        rep_csv.to_csv('./intermediate_files/representative_images_overall.csv', index=False, header=True)
     print('saved representatives')
 
 def clustering_bias():
@@ -269,20 +280,24 @@ def error_rate():
 def main() -> None:
     """
     Main function to run the clustering and visualization process."""
-    #image_dir = 'data/lfw-deepfunneled/'
-    image_dir = 'cropped_faces'
-    if image_dir == 'data/lfw-deepfunneled/':
-        image_paths = get_image_paths(image_dir)
-    else:
-        image_paths = [os.path.join(image_dir, filename) for filename in \
-                       os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+    image_dir_1 = 'data/lfw-deepfunneled/'
+    image_dir_2 = 'cropped_faces'
+    # if image_dir == 'data/lfw-deepfunneled/':
+    #     image_paths = get_image_paths(image_dir)
+    # else:
+    #     image_paths = [os.path.join(image_dir, filename) for filename in \
+    #                    os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+    image_paths_1 = get_image_paths(image_dir_1)
+    image_paths_2 = [os.path.join(image_dir_2, filename) for filename in \
+                     os.listdir(image_dir_2) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+    image_paths = np.concatenate((image_paths_1, image_paths_2))
     skin_tones = process_images(image_paths)
     labels, avg_skin_tones, representatives, n_clusters = cluster_images(skin_tones, image_paths, n_clusters=10)
-    plot_cluster_sizes(labels, avg_skin_tones, image_paths, n_clusters)
+    plot_cluster_sizes("None", labels, avg_skin_tones, image_paths, n_clusters)
     clustering_df, skintone_df = process_img_for_clustering(pd.DataFrame(avg_skin_tones, columns=['R', 'G', 'B']), representatives)
-    plot_rgb_distributions(skintone_df, image_dir)
-    save_representatives(clustering_df)
-    plot_clusters(clustering_df)
+    plot_rgb_distributions(skintone_df, "None")
+    save_representatives(clustering_df, "None")
+    plot_clusters(clustering_df, "None")
 
 if __name__ == "__main__":
     main()
