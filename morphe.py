@@ -27,10 +27,10 @@ def get_closest_images(representative_data: pd.DataFrame, morphe_data: pd.DataFr
             img_path, morphe_img = img_tuple
             min_distances_row[img_path][morphe_img] = distance
         min_distances.update(min_distances_row)
-    out = pd.DataFrame(columns=['Image Path', 'Morphe1', 'Dist_Morphe1', 
-                                'Morphe2', 'Dist_Morphe2', 'Morphe3', 
-                                'Dist_Morphe3', 'Morphe4', 'Dist_Morphe4', 
-                                'Morphe5', 'Dist_Morphe5'])
+    out = pd.DataFrame(columns=['Image Path', 'RJ1', 'Dist_RJ1', 
+                                'RJ2', 'Dist_RJ2', 'RJ3', 
+                                'Dist_RJ3', 'RJ4', 'Dist_RJ4', 
+                                'RJ5', 'Dist_RJ5'])
     for img_path, morphe_dict in min_distances.items():
         row = [img_path]
         for i, (morphe_img, distance) in enumerate(morphe_dict.items()):
