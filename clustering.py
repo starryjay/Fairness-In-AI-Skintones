@@ -18,6 +18,8 @@ def extract_skin(image: np.ndarray) -> tuple[int, int]:
     center_pixel = image[center_y-10:center_y+10, center_x-10:center_x+10]
     # calculate average RGB values
     avg_rgb = np.mean(center_pixel, axis=(0, 1))
+    cv2.rectangle(image, (center_x - 10, center_y - 10), (center_x + 10, center_y + 10), (0, 255, 0), 2)
+    cv2.drawMarker(image, (center_x, center_y), (0, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=5, thickness=1)
     return avg_rgb
 
 def get_image_paths(root_dir: str) -> list[str]:
@@ -52,6 +54,12 @@ def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
         img = cv2.resize(img, (128, 128))
         skin = extract_skin(img)
         skin_tones[path] = {'R': float(skin[0]), 'G': float(skin[1]), 'B': float(skin[2])}
+        # write 5 images to disk with skin tone box
+        if path in image_paths[:5] and len(image_paths) > 40:
+            img = cv2.resize(img, (256, 256))
+            os.makedirs('./processed_images', exist_ok=True)
+            print('writing image to disk')
+            cv2.imwrite(os.path.join('./processed_images', os.path.basename(path)), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     print('processed images')
     return skin_tones
 
@@ -249,7 +257,7 @@ def clustering_bias():
 
 def error_rate():
     '''determine how often Morphe foundation shade reccomendations compare to model skin tone output
-    1. Clustering gives us RGB values of representative image and 5 closest images (what K means thinks are the 5 closeest). 
+    1. Clustering gives us RGB values of representative image and 5 closest images (what K means thinks are the 5 closest). 
     2. Morphe models (used in the AI tool) have an associated RGB  and also give 5 reccoemdnations 
     3. Pass the representative image into the 'I to'l'and e  what are the recceomendations (get 5 RGB)
     4. Metric 1 Jaccard similairity - how much do the representative image recceomdnations deviate 
