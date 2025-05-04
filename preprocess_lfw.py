@@ -4,15 +4,12 @@ import os
 import shutil
 import tensorflow as tf
 
-
 def create_file_structure():
     '''file structure'''
     source = 'data/lfw-deepfunneled/'
     dest = 'data/'
     img = []
-
     os.makedirs(dest, exist_ok=True)
-
     for root, dirs, files in os.walk(source):
         for file in files:
             #remove DS store
@@ -27,7 +24,6 @@ def create_file_structure():
             src = os.path.join(root, file)
             dst = os.path.join(dest, new_file)
             shutil.copyfile(src, dst)
-
             img.append([person, new_file])
     #df 
     df = pd.DataFrame(img, columns=['person', 'file'])
@@ -42,7 +38,8 @@ def preprocess_lfw(lfw_csv):
     # get image path
     img_path = one_per_person['file']
     img_path = img_path.apply(lambda x: os.path.join('data', x))
-    resized = pd.DataFrame(columns=['img'])
+    output_dir = 'data/resized/'
+    os.makedirs(output_dir, exist_ok=True)
     for img in img_path:
         #read image
         img = tf.io.read_file(img)
@@ -51,12 +48,12 @@ def preprocess_lfw(lfw_csv):
         img = tf.image.resize(img, [128, 128])
         #normalize image
         img = img / 255.0
-        #add to df
-        resized = pd.concat([resized, pd.DataFrame({'img': [img]})], ignore_index=True)
-    return resized
+        img_uint8 = tf.image.convert_image_dtype(img, tf.uint8)
+        encoded = tf.image.encode_jpeg(img_uint8)
+        tf.io.write_file(os.path.join(output_dir, os.path.basename(img)), encoded)
 
 def main():
-    #create_file_structure()
-    resized = preprocess_lfw('data/lfw.csv')
+    create_file_structure()
+    preprocess_lfw('data/lfw.csv')
 
 main()

@@ -1,2 +1,12 @@
 /data
 .DS_Store
+/skin_imgs
+/closest_images
+/morphe foundation quiz images
+/closest_images_fashion
+/closest_images_lfw
+/cropped_faces
+/Fashion_Imgs
+/closest_images_overall
+*.csv
+*.csv
