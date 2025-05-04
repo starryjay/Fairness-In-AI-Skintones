@@ -1,6 +1,7 @@
 # Skintone Analysis
 ## Comparing Foundation Shade Recommendations from Morphe Cosmetics' Lightform AI to a Custom Clustering Model
 ---
+Jay Shreedhar and Roma Paranjpe
 
 ### Background
 The goal of this analysis is to evaluate fairness and bias in the cosmetics industry. 
