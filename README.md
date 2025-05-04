@@ -1,7 +1,7 @@
 Skintone Analysis - Comparing Foundation Shade Recs from Morphe Cosmetics Compared to a Custom Clustering Model
 
 Background
-THe goal of this analysis is to evaluate fairness and bias in the cosmetics industry. 
+The goal of this analysis is to evaluate fairness and bias in the cosmetics industry. 
 
 How to Run 
 1. create a venv and clone repo
