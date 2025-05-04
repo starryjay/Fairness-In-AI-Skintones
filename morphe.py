@@ -74,8 +74,6 @@ def plot_distances(min_distances: dict, rep_path: str) -> None:
 def main() -> None:
     """
     Main function to read the representative images and Morphe swatches, find the closest images, and plot the distances."""
-    #rep_path = './intermediate_files/representative_images_fashion.csv'
-    #rep_path = './intermediate_files/representative_images_lfw.csv'
     rep_path = './intermediate_files/representative_images_overall.csv'
     morphe_data = pd.read_csv('./intermediate_files/morphe_swatch.csv')
     representative_data = pd.read_csv(rep_path)

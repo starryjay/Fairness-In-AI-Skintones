@@ -14,12 +14,8 @@ def extract_skin(image: np.ndarray) -> tuple[int, int]:
     """
     height, width, _ = image.shape
     center_x, center_y = width // 2, height // 2
-    # get pixel value of area around center pixel
     center_pixel = image[center_y-10:center_y+10, center_x-10:center_x+10]
-    # calculate average RGB values
     avg_rgb = np.mean(center_pixel, axis=(0, 1))
-    # cv2.rectangle(image, (center_x - 10, center_y - 10), (center_x + 10, center_y + 10), (0, 255, 0), 2)
-    # cv2.drawMarker(image, (center_x, center_y), (0, 255, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=5, thickness=1)
     return avg_rgb
 
 def get_image_paths(root_dir: str) -> list[str]:
@@ -54,12 +50,6 @@ def process_images(image_paths: list[str]) -> dict[str, dict[str, float]]:
         img = cv2.resize(img, (128, 128))
         skin = extract_skin(img)
         skin_tones[path] = {'R': float(skin[0]), 'G': float(skin[1]), 'B': float(skin[2])}
-        # # write 5 images to disk with skin tone box
-        # if path in image_paths[:5] and len(image_paths) > 40:
-        #     img = cv2.resize(img, (256, 256))
-        #     os.makedirs('./processed_images', exist_ok=True)
-        #     print('writing image to disk')
-        #     cv2.imwrite(os.path.join('./processed_images', os.path.basename(path)), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     print('processed images')
     return skin_tones
 
@@ -92,7 +82,6 @@ def plot_cluster_sizes(image_dir: str, labels: np.ndarray, cluster_centers: np.n
     """
     Plot the sizes of each cluster and save the plot.
     """
-    # plot size of each cluster, colored by cluster center rgb
     plt.figure(figsize=(10, 6), dpi=300)
     ax = plt.subplot(111)
     _, _, patches = ax.hist(labels, bins=n_clusters, edgecolor='black', linewidth=1)
@@ -132,7 +121,6 @@ def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list
     skintone_df = pd.DataFrame.from_dict(skin_tones, orient='index')
     skintone_df = skintone_df.stack().reset_index()
     skintone_df.columns = ['Cluster', 'Representative', 'RGB']
-    # scale cluster from 1-10
     skintone_df['Cluster'] = skintone_df['Cluster'].astype(int)
     skintone_df[['Image Path', 'RGB']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
     skintone_df[['R', 'G', 'B']] = pd.DataFrame(skintone_df['RGB'].tolist(), index=skintone_df.index)
@@ -152,11 +140,6 @@ def process_img_for_clustering(df: pd.DataFrame, representatives: dict[int, list
                                                                              'RGB_tuple_y': 'Representative_RGB_tuple'})
     print('processed images for clustering')
     return df, skintone_df
-
-def print_skintone_distributions(skintone_df: pd.DataFrame, labels: np.ndarray) -> None:
-    print('first 10 items in labels:\n', labels[:10])
-    #cluster_dist = pd.crosstab(index=)
-    
 
 def plot_clusters(df: pd.DataFrame, image_dir: str) -> None:
     """
@@ -250,22 +233,6 @@ def save_representatives(clustering_df: pd.DataFrame, image_dir: str) -> None:
         rep_csv.to_csv('./intermediate_files/representative_images_overall.csv', index=False, header=True)
     print('saved representatives')
 
-def clustering_bias():
-    '''Measures the bias in the clustering process by checking the distribution of skin tones in the clusters.'''
-
-    # X = df[['R', 'G', 'B']].values
-    # kmeans = KMeans(n_clusters=3, random_state=42).fit(X)
-    # df['cluster'] = kmeans.labels_
-
-    # df['cluster'].value_counts(normalize=True)
-
-    #staticial parity 
-    #parity = pd.Series(clusters).value_counts(normalize=True).sort_index()
-
-    #training data bias - check distribution in raw image data
-    return 
-
-
 def error_rate():
     '''determine how often Morphe foundation shade reccomendations compare to model skin tone output
     1. Clustering gives us RGB values of representative image and 5 closest images (what K means thinks are the 5 closest). 
@@ -282,11 +249,6 @@ def main() -> None:
     Main function to run the clustering and visualization process."""
     image_dir_1 = 'data/lfw-deepfunneled/'
     image_dir_2 = 'cropped_faces'
-    # if image_dir == 'data/lfw-deepfunneled/':
-    #     image_paths = get_image_paths(image_dir)
-    # else:
-    #     image_paths = [os.path.join(image_dir, filename) for filename in \
-    #                    os.listdir(image_dir) if filename.endswith(('.jpg', '.jpeg', '.png'))]
     image_paths_1 = get_image_paths(image_dir_1)
     image_paths_2 = [os.path.join(image_dir_2, filename) for filename in \
                      os.listdir(image_dir_2) if filename.endswith(('.jpg', '.jpeg', '.png'))]

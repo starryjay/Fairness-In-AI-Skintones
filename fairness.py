@@ -7,6 +7,8 @@ import random
 random.seed(39)
 
 def get_agreement(gtpath: str, morphepath: str, clusterpath: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compares the ground truth with Morphe and cluster data to calculate agreement and skin tone categories."""
     gt = pd.read_csv(gtpath).loc[:, ['Image Path', 'ground_truth1', 'ground_truth2', 'ground_truth3', 
                                      'ground_truth4', 'ground_truth5']]
     morphe = pd.read_csv(morphepath).loc[:, ['Image Path', 'Morphe1', 'Morphe2', 'Morphe3', 'Morphe4', 'Morphe5']]
@@ -157,16 +159,9 @@ def main():
     gt_morphe.to_csv('./intermediate_files/gt_morphe_agreement.csv', index=False)
     gt_cluster.to_csv('./intermediate_files/gt_cluster_agreement.csv', index=False)
 
-    # print('Agreement between ground truth and Morphe:')
-    # print(gt_morphe.head())
-    # print('Agreement between ground truth and cluster:')
-    # print(gt_cluster.head())
-
     print('Fairness metrics:')
     print('---------------------------------------------------------------')
     fairness(gt_morphe, gt_cluster)
-
-    #plot_agreement(gt_morphe, gt_cluster)
 
 if __name__ == "__main__":
     main()

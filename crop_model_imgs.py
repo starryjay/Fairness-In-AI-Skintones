@@ -11,7 +11,6 @@ def read_image(image_path: str) -> cv2.Mat:
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"Image at {image_path} could not be read.")
-    # Resize to 800x1200
     image = cv2.resize(image, (800, 1200))
     return image
 
@@ -40,7 +39,7 @@ def crop_face(images: list[str, cv2.Mat], faces: list) -> list[str, cv2.Mat]:
     for tup, face_array in zip(images, faces):
         path = tup[0]
         image = tup[1]
-        if len(face_array) > 0:  # Check if any face is detected
+        if len(face_array) > 0:
             for face_rect in face_array:
                 x, y, w, h = face_rect
                 x_end = min(x + w, img_width)

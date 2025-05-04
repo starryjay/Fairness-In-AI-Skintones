@@ -81,7 +81,6 @@ def results_table(ground_truth, closest_morphe, closest_cluster):
                 row[['RJ1', 'RJ2', 'RJ3', 'RJ4', 'RJ5']]
                 )), axis=1)
     
-    # Count the number of occurrences of each skintone category (first item when split by '_') for morphe, ground truth, and cluster and store in a dataframe
     morphe_df = merged[['Morphe1', 'Morphe2', 'Morphe3', 'Morphe4', 'Morphe5']]
     clustered_df = merged[['RJ1', 'RJ2', 'RJ3', 'RJ4', 'RJ5']]
     ground_truth_df = merged[['ground_truth1', 'ground_truth2', 'ground_truth3', 'ground_truth4', 'ground_truth5']]
@@ -93,21 +92,17 @@ def results_table(ground_truth, closest_morphe, closest_cluster):
     morphe_counts = morphe_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
     clustered_counts = clustered_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
     ground_truth_counts = ground_truth_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
-    # Ensure both have the same categories
     all_categories = ['fairlight', 'light', 'lightmedium', 'medium', 'tan', 'deeptan', 'rich', 'deeprich', 'deep', 'deepest']
     morphe_counts = morphe_counts.reindex(all_categories, fill_value=0)
     clustered_counts = clustered_counts.reindex(all_categories, fill_value=0)
     ground_truth_counts = ground_truth_counts.reindex(all_categories, fill_value=0)
 
-    # Create a new DataFrame to store the counts
     counts_df = pd.DataFrame({
         'Morphe': morphe_counts,
         'Clustered': clustered_counts,
         'Ground Truth': ground_truth_counts
     })
 
-
-    # add columns with percentage deviation from ground truth
     counts_df['Morphe_Deviation'] = (counts_df['Morphe'] - counts_df['Ground Truth']) / counts_df['Ground Truth'] * 100
     counts_df['Clustered_Deviation'] = (counts_df['Clustered'] - counts_df['Ground Truth']) / counts_df['Ground Truth'] * 100
     print(counts_df)
@@ -115,7 +110,6 @@ def results_table(ground_truth, closest_morphe, closest_cluster):
     return merged, counts_df
 
 def plot_results(merged: pd.DataFrame, counts_df: pd.DataFrame) -> None:
-    # bar plot of number of occurrences of each skintone category (first item when split by '_') for morphe, ground truth, and cluster - different colors for each
     morphe_df = merged[['Morphe1', 'Morphe2', 'Morphe3', 'Morphe4', 'Morphe5']]
     clustered_df = merged[['RJ1', 'RJ2', 'RJ3', 'RJ4', 'RJ5']]
     ground_truth_df = merged[['ground_truth1', 'ground_truth2', 'ground_truth3', 'ground_truth4', 'ground_truth5']]
@@ -169,14 +163,6 @@ def plot_results(merged: pd.DataFrame, counts_df: pd.DataFrame) -> None:
     clusters_patch = mpatches.Patch(color='limegreen', label='Clustered')
     ground_truth_patch = mpatches.Patch(color='blue', label='Ground Truth')
     plt.legend(handles=[lightform_patch, clusters_patch, ground_truth_patch], title = "Dataset")
-
-    #spline_lightform = make_interp_spline(x, morphe_counts, k=5)
-    #spline_clustered = make_interp_spline(x, clustered_counts, k=5)
-    #plt.bar([pos - bar_width / 3 for pos in x], morphe_counts, bar_width, label='Morphe', color = [morphe_color_map[i] for i in morphe_counts.index],edgecolor= 'salmon', linewidth=2)
-    #plt.plot(x, spline_lightform(x), color='salmon', linewidth=2)
-    #plt.bar([pos + bar_width / 3 for pos in x], clustered_counts, bar_width, label='Clustered', color = [clustered_color_map[i] for i in clustered_counts.index], edgecolor = 'limegreen', linewidth=2)
-    #plt.bar([pos for pos in x], ground_truth_counts, bar_width, label='Ground Truth', color = [clustered_color_map[i] for i in ground_truth_counts.index], edgecolor = 'blue', linewidth=2)
-    #plt.plot(x, spline_clustered(x), color='springgreen', linewidth=2)
     plt.bar([pos - bar_width for pos in x], morphe_counts, bar_width, label='Morphe', color = [morphe_color_map[i] for i in morphe_counts.index],edgecolor= 'salmon', linewidth=2)
     plt.bar([pos for pos in x], ground_truth_counts, bar_width, label='Ground Truth', color = [morphe_color_map[i] for i in ground_truth_counts.index], edgecolor = 'blue', linewidth=2)
     plt.bar([pos + bar_width for pos in x], clustered_counts, bar_width, label='Clustered', color = [clustered_color_map[i] for i in clustered_counts.index], edgecolor = 'limegreen', linewidth=2)
@@ -195,7 +181,6 @@ def plot_results(merged: pd.DataFrame, counts_df: pd.DataFrame) -> None:
 
     plt.show()
 
-    # Plot the percentage deviation from ground truth
     plt.figure(figsize=(10, 6))
     plt.bar(counts_df.index, counts_df['Morphe_Deviation'], color='salmon', label='Morphe Deviation')
     plt.bar(counts_df.index, counts_df['Clustered_Deviation'], color='limegreen', label='Clustered Deviation')
@@ -209,19 +194,13 @@ def plot_results(merged: pd.DataFrame, counts_df: pd.DataFrame) -> None:
     plt.savefig(f'plots/percentage_deviation.png')
     plt.show()
 
-    # Plot the percentage deviation from ground truth without the 'deeptan', 'rich', 'deep', and 'deepest' categories
     plt.figure(figsize=(10, 6))
     counts_df = counts_df.drop(['deeptan', 'rich', 'deep', 'deepest'])
     plt.bar(counts_df.index, counts_df['Morphe_Deviation'], color='salmon', label='Morphe Deviation')
     plt.bar(counts_df.index, counts_df['Clustered_Deviation'], color='limegreen', label='Clustered Deviation')
     plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
-    plt.xticks(rotation=45)
-
-    # plot the mean absolute error for morphe and clustered per category
+    plt.xticks(rotation=45)    
     
-    
-
-
 def main():
     gtpath = './intermediate_files/ground_truth.csv'
     closestpath = './intermediate_files/closest_images_overall.csv'

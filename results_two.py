@@ -22,8 +22,6 @@ def split_by_underscore(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     cols_clustered = [f'RJ{x}' for x in range(1, 6)]
     cols_morphe = [f'Morphe{x}' for x in range(1, 6)]
-
-    # Process columns to extract text before underscore
     morphe_df = df[cols_morphe].applymap(lambda x: x.split('_')[0] if isinstance(x, str) else x)
     clustered_df = df[cols_clustered].applymap(lambda x: x.split('_')[0] if isinstance(x, str) else x)
 
@@ -38,20 +36,15 @@ def plot_results(morphe_df: pd.DataFrame, clustered_df: pd.DataFrame, title: str
         clustered_df: DataFrame containing Clustered predictions.
         title: Title of the plot.
     """
-    # Aggregate data
     morphe_counts = morphe_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
     clustered_counts = clustered_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
-
-    # Ensure both have the same categories
     all_categories = ['fairlight', 'light', 'lightmedium', 'medium', 'tan', 'deeptan', 'rich', 'deeprich', 'deep', 'deepest']
     morphe_counts = morphe_counts.reindex(all_categories, fill_value=0)
-    # sort from light to dark
 
     clustered_counts = clustered_counts.reindex(all_categories, fill_value=0)
 
-    # Create side-by-side bar plot
-    x = range(len(all_categories))  # X-axis positions for categories
-    bar_width = 0.4  # Width of each bar
+    x = range(len(all_categories))
+    bar_width = 0.4
 
     morphe_color_map = {
         'deep':(0.6392156863, 0.3176470588, 0.1411764706),
@@ -88,16 +81,11 @@ def plot_results(morphe_df: pd.DataFrame, clustered_df: pd.DataFrame, title: str
     clusters_patch = mpatches.Patch(color='palegreen', label='Clustered')
     plt.legend(handles=[lightform_patch, clusters_patch], title = "Dataset")
 
-    #spline_lightform = make_interp_spline(x, morphe_counts, k=5)
-    #spline_clustered = make_interp_spline(x, clustered_counts, k=5)
     plt.bar([pos - bar_width / 2 for pos in x], morphe_counts, bar_width, label='Morphe', color = [morphe_color_map[i] for i in morphe_counts.index],edgecolor= 'salmon', linewidth=2)
-    #plt.plot(x, spline_lightform(x), color='salmon', linewidth=2)
     plt.bar([pos + bar_width / 2 for pos in x], clustered_counts, bar_width, label='Clustered', color = [clusterd_color_map[i] for i in clustered_counts.index], edgecolor = 'palegreen', linewidth=2)
-    #plt.plot(x, spline_clustered(x), color='springgreen', linewidth=2)
     plt.fill_between(x, morphe_counts, color='salmon', alpha=0.3)
     plt.fill_between(x, clustered_counts, color='palegreen', alpha=0.3)
 
-    # Add labels, legend, and title
     plt.xticks(x, all_categories, rotation=45)
     plt.xlabel("Categories")
     plt.ylabel("Count")
@@ -129,8 +117,6 @@ print("Combined Data Morphe:")
 print(morphe_df_combined.head())
 print("Combined Data Clustered:")
 print(clustered_df_combined.head())
-
-#plot([morphe_df_fashion, morphe_df_lfw, morphe_df_combined], [clustered_df_fashion, clustered_df_lfw, clustered_df_combined])
 
 plot_results(morphe_df_fashion, clustered_df_fashion, "Fashion Morphe vs Clustered")
 plot_results(morphe_df_lfw, clustered_df_lfw, "LFW Morphe vs Clustered")
