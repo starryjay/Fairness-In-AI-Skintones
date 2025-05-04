@@ -18,7 +18,7 @@ def get_closest_images(representative_data: pd.DataFrame, morphe_data: pd.DataFr
         distances = {}
         for _, m_row in morphe_data.iterrows():
             morphe_rgb = np.array([m_row['R'], m_row['G'], m_row['B']])
-            distance = np.sum(np.abs(np.square(representative_rgb) - np.square(morphe_rgb)))
+            distance = np.sqrt(np.abs(np.sum(np.square(representative_rgb - morphe_rgb))))
             distances[(row['Image Path'], m_row['tone_name'])] = distance
         sorted_distances = sorted(distances.items(), key=lambda x: x[1])
         n_closest = sorted_distances[:n]
