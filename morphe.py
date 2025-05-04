@@ -18,7 +18,7 @@ def get_closest_images(representative_data: pd.DataFrame, morphe_data: pd.DataFr
         distances = {}
         for _, m_row in morphe_data.iterrows():
             morphe_rgb = np.array([m_row['R'], m_row['G'], m_row['B']])
-            distance = np.sum(np.abs(representative_rgb - morphe_rgb))
+            distance = np.sum(np.abs(np.square(representative_rgb) - np.square(morphe_rgb)))
             distances[(row['Image Path'], m_row['tone_name'])] = distance
         sorted_distances = sorted(distances.items(), key=lambda x: x[1])
         n_closest = sorted_distances[:n]
@@ -48,7 +48,7 @@ def write_csv(rep_path, out: pd.DataFrame) -> None:
     elif 'lfw' in rep_path:
         out.to_csv('./intermediate_files/closest_images_lfw.csv', index=False)
     else:
-        out.to_csv('./intermediate_files/closest_images_overall.csv', index=False)
+        out.to_csv('./intermediate_files/closest_images_overall_mod.csv', index=False)
 
 def plot_distances(min_distances: dict, rep_path: str) -> None:
     """
