@@ -1,4 +1,4 @@
-# Skintone Analysis
+# Fairness in AI: Skintone Analysis
 ## Comparing Foundation Shade Recommendations from Morphe Cosmetics' Lightform AI to a Custom Clustering Model
 ---
 ### By Jay Shreedhar and Roma Paranjpe
